@@ -1,0 +1,100 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Constantes
+G = 6.67430e-11  # Constante gravitacional [m^3 kg^-1 s^-2]
+lambda_dark = 1e-10  # Constante de acoplamento da matéria escura
+rho_dark = 1e-6  # Densidade da matéria escura (exemplo)
+lambda_dark_energy = 1e-5  # Constante de acoplamento da energia escura
+
+# Função para calcular a aceleração gravitacional
+def gravitational_acceleration(masses, positions):
+    N = len(masses)
+    accelerations = np.zeros_like(positions)
+    for i in range(N):
+        for j in range(N):
+            if i != j:
+                r_ij = positions[j] - positions[i]
+                dist_ij = np.linalg.norm(r_ij)
+                accelerations[i] += G * masses[j] * r_ij / dist_ij**3
+    return accelerations
+
+# Função para calcular a aceleração de matéria escura
+def dark_matter_acceleration(positions):
+    N = len(positions)
+    accelerations = np.zeros_like(positions)
+    for i in range(N):
+        for j in range(N):
+            if i != j:
+                r_ij = positions[j] - positions[i]
+                dist_ij = np.linalg.norm(r_ij)
+                accelerations[i] += lambda_dark * rho_dark * r_ij / dist_ij**3
+    return accelerations
+
+# Função para calcular a aceleração devido à energia escura
+def dark_energy_acceleration(positions):
+    N = len(positions)
+    accelerations = np.zeros_like(positions)
+    for i in range(N):
+        for j in range(N):
+            if i != j:
+                r_ij = positions[j] - positions[i]
+                dist_ij = np.linalg.norm(r_ij)
+                accelerations[i] += lambda_dark_energy * r_ij / dist_ij
+    return accelerations
+
+# Função para calcular as acelerações totais
+def total_acceleration(masses, positions):
+    grav_acc = gravitational_acceleration(masses, positions)
+    dark_m_acc = dark_matter_acceleration(positions)
+    dark_e_acc = dark_energy_acceleration(positions)
+    return grav_acc + dark_m_acc + dark_e_acc
+
+# Método de Runge-Kutta de 4ª ordem para resolver as equações diferenciais
+def runge_kutta_4(masses, positions, velocities, dt, steps):
+    N = len(masses)
+    trajectory = np.zeros((steps, N, 2))  # Trajetórias [x, y] para cada corpo
+    
+    for step in range(steps):
+        trajectory[step] = positions
+        # Calculando acelerações
+        accel = total_acceleration(masses, positions)
+        
+        # Método de Runge-Kutta 4ª ordem
+        k1_v = accel * dt
+        k1_r = velocities * dt
+
+        k2_v = total_acceleration(masses, positions + 0.5 * k1_r) * dt
+        k2_r = (velocities + 0.5 * k1_v) * dt
+
+        k3_v = total_acceleration(masses, positions + 0.5 * k2_r) * dt
+        k3_r = (velocities + 0.5 * k2_v) * dt
+
+        k4_v = total_acceleration(masses, positions + k3_r) * dt
+        k4_r = (velocities + k3_v) * dt
+        
+        # Atualizando as posições e velocidades
+        positions += (k1_r + 2*k2_r + 2*k3_r + k4_r) / 6
+        velocities += (k1_v + 2*k2_v + 2*k3_v + k4_v) / 6
+    
+    return trajectory
+
+# Parâmetros iniciais
+masses = np.array([5.97e24, 1.99e30, 3.3e23])  # Exemplo de massas (Terra, Sol, Mercúrio)
+positions = np.array([[1e11, 0], [0, 0], [5.79e10, 0]])  # Posições [x, y] para os corpos (m)
+velocities = np.array([[0, 30e3], [0, 0], [0, 47.87e3]])  # Velocidades [vx, vy] (m/s)
+dt = 1e5  # Passo de tempo [s]
+steps = 10000  # Número de passos de tempo
+
+# Calculando a trajetória
+trajectory = runge_kutta_4(masses, positions, velocities, dt, steps)
+
+# Plotando a trajetória
+plt.figure(figsize=(8, 8))
+for i in range(len(masses)):
+    plt.plot(trajectory[:, i, 0], trajectory[:, i, 1], label=f'Corpo {i+1}')
+plt.xlabel('Posição X [m]')
+plt.ylabel('Posição Y [m]')
+plt.title('Trajetórias dos Corpos com Matéria Escura e Energia Escura')
+plt.legend()
+plt.show()
